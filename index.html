@@ -27,7 +27,7 @@
       let cleaned = cleanText(summary);
       if (headline) {
         const escaped = headline.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-        cleaned = cleaned.replace(new RegExp(escaped + '$'), '').trim();
+        cleaned = cleaned.replace(new RegExp(escaped + '\\s*$', 'i'), '').trim();
       }
       return cleaned;
     };
