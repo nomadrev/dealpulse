@@ -21,8 +21,14 @@
   <script type="text/javascript">
     const csvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vS2ULVOVELwlyYCClrgJMaG1P15JUsCjSyG8vTYLXmuh0uO-gGbRZV9c-Ntlch0XZ3bsAeXtEAa6nND/pub?output=csv";
 
-    const cleanText = (text) => {
-      return text ? text.replace(/RSS Entry.*/gi, '').trim() : "";
+    const cleanText = (text) => text ? text.replace(/RSS Entry.*/gi, '').trim() : "";
+
+    const cleanSummary = (summary, headline) => {
+      let cleaned = cleanText(summary);
+      if (headline && cleaned.includes(headline)) {
+        cleaned = cleaned.replace(headline, '').trim();
+      }
+      return cleaned;
     };
 
     async function fetchDealsFromCSV() {
@@ -39,18 +45,21 @@
         return trimmedRow;
       });
 
-      return data.map(cols => ({
-        Date: cols['Published On'] || "N/A",
-        Headline: cleanText(cols['Headline']) || "N/A",
-        Deal_Type: cols['Deal Type'] || "N/A",
-        Investor_Name: cols['Investor Name'] || "N/A",
-        Investee_Name: cols['Investee Name'] || "N/A",
-        Target_Industry: cols['Target Industry'] || "N/A",
-        Investor_Industry: cols['Investor Industry'] || "N/A",
-        Deal_Value: cols['Deal Value'] || "N/A",
-        Summary: cleanText(cols['Summary']) || "N/A",
-        URL: cols['Source URL'] || "#"
-      }));
+      return data.map(cols => {
+        const headline = cleanText(cols['Headline']);
+        return {
+          Date: cols['Published On'] || "N/A",
+          Headline: headline || "N/A",
+          Deal_Type: cols['Deal Type'] || "N/A",
+          Investor_Name: cols['Investor Name'] || "N/A",
+          Investee_Name: cols['Investee Name'] || "N/A",
+          Target_Industry: cols['Target Industry'] || "N/A",
+          Investor_Industry: cols['Investor Industry'] || "N/A",
+          Deal_Value: cols['Deal Value'] || "N/A",
+          Summary: cleanSummary(cols['Summary'], headline) || "N/A",
+          URL: cols['Source URL'] || "#"
+        };
+      });
     }
 
     const App = ({ initialDeals }) => {
