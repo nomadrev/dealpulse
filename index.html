@@ -32,22 +32,14 @@
       "Biotech": "💊"
     };
 
-    const cleanText = (text) => text ? text.replace(/RSS Entry.*/gi, '').trim() : "";
-
-    const cleanSummary = (summary, headline) => {
-      let cleaned = cleanText(summary);
-      if (headline) {
-        const escaped = headline.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-        cleaned = cleaned.replace(new RegExp(escaped + '\\s*$', 'i'), '').trim();
-      }
-      return cleaned;
-    };
-
     async function fetchDealsFromCSV() {
       const response = await fetch(csvUrl);
       const csvText = await response.text();
 
       const parsed = Papa.parse(csvText, { header: true, skipEmptyLines: true });
+
+      // DEBUG: Log CSV headers to console
+      console.log("CSV Headers detected:", parsed.meta.fields);
 
       const data = parsed.data.map(row => {
         const trimmedRow = {};
@@ -58,8 +50,13 @@
       });
 
       return data.map(cols => {
-        const headline = cleanText(cols['Headline']);
-        // Robust parse Deal Value: remove all but digits and dot
+        // DEBUG: Log each row keys and example values
+        console.log("Row keys:", Object.keys(cols));
+        console.log("Row example values:", cols);
+
+        const headlineRaw = cols['Headline'] || "";
+        const headline = headlineRaw.replace(/RSS Entry.*/gi, '').trim();
+
         let rawValue = cols['Deal Value'] || "";
         rawValue = rawValue.replace(/[^0-9.]/g, '');
         let value = parseFloat(rawValue);
@@ -77,7 +74,7 @@
           Target_Industry: sector || "N/A",
           Investor_Industry: cols['Investor Industry'] || "N/A",
           Deal_Value: value,
-          Summary: cleanSummary(cols['Summary'], headline) || "N/A",
+          Summary: (cols['Summary'] || "").replace(headlineRaw, "").replace(/RSS Entry.*/gi, '').trim() || "N/A",
           URL: cols['Source URL'] || "#",
           Omni_Tag: value > 100000000 ? "🔥 Hot Deal" : "",
           Sector_Tag: hotSectorKey ? `${hotSectors[hotSectorKey]} ${hotSectorKey}` : ""
@@ -130,7 +127,6 @@
       return React.createElement("div", null,
         React.createElement("h1", { className: "text-3xl font-bold mb-6" }, "DealPulse - Live Deals"),
 
-        // Omni Insights panel
         React.createElement("div", { className: "bg-white p-4 mb-6 rounded shadow" },
           React.createElement("h2", { className: "text-xl font-semibold mb-2" }, "Omni Insights"),
           React.createElement("p", null, `📌 Total Deals: ${totalDeals}`),
@@ -139,7 +135,6 @@
           React.createElement("p", null, `📊 Top Sector: ${topSector}`)
         ),
 
-        // Filters & Sorting controls
         React.createElement("div", { className: "flex flex-wrap gap-4 mb-6 items-center" },
           React.createElement("select", {
             className: "p-2 border rounded",
@@ -168,7 +163,6 @@
           }, "Reset")
         ),
 
-        // Deal cards list
         sortedDeals.length === 0 ?
           React.createElement("p", { className: "text-gray-600" }, "No matching deals found.") :
           sortedDeals.map((deal, index) =>
