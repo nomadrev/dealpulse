@@ -17,6 +17,7 @@
 
   <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
   <script type="text/javascript">
     const csvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vS2ULVOVELwlyYCClrgJMaG1P15JUsCjSyG8vTYLXmuh0uO-gGbRZV9c-Ntlch0XZ3bsAeXtEAa6nND/pub?output=csv";
@@ -32,19 +33,22 @@
       "Biotech": "💊"
     };
 
-    // Clean text function to remove unwanted "RSS Entry Title"
     const cleanText = (text) => text ? text.replace(/RSS Entry Title/gi, '').trim() : text;
 
     async function fetchDealsFromCSV() {
       const response = await fetch(csvUrl);
       const csvText = await response.text();
-      const rows = csvText.split('\n').slice(1).filter(r => r.trim() !== "" && !r.toLowerCase().includes('rss entry title'));
 
-      return rows.map(row => {
-        const cols = row.split(',');
-        if (cols.length < 9) return null;
+      // Use PapaParse to parse CSV properly
+      const parsed = Papa.parse(csvText, { header: true, skipEmptyLines: true });
+      const data = parsed.data;
 
-        let rawValue = cols[6] ? cols[6].trim() : "";
+      return data.map(cols => {
+        // Exclude rows that have 'RSS Entry Title' anywhere
+        if (Object.values(cols).some(val => val && val.toLowerCase().includes('rss entry title'))) return null;
+
+        let rawValue = cols['Deal Value'] || cols['Deal_Value'] || "";
+        rawValue = rawValue.trim();
         let multiplier = 1;
         if (rawValue.includes('B')) multiplier = 1e9;
         else if (rawValue.includes('M')) multiplier = 1e6;
@@ -52,21 +56,22 @@
         let value = parseFloat(rawValue) * multiplier;
         if (isNaN(value)) value = 0;
 
-        const sector = cleanText(cols[4]);
+        const sector = cleanText(cols['Target Industry'] || cols['Target_Industry'] || "");
+
         const hotSectorKey = Object.keys(hotSectors).find(k =>
           sector?.toLowerCase().includes(k.toLowerCase())
         );
 
         return {
-          Date: cleanText(cols[0]) || "Unknown Date",
-          Deal_Type: cleanText(cols[1]) || "Unknown Type",
-          Investor_Name: cleanText(cols[2]) || "Unknown Investor",
-          Investee_Name: cleanText(cols[3]) || "Unknown Investee",
+          Date: cleanText(cols['Date'] || "") || "Unknown Date",
+          Deal_Type: cleanText(cols['Deal Type'] || cols['Deal_Type'] || "") || "Unknown Type",
+          Investor_Name: cleanText(cols['Investor Name'] || cols['Investor_Name'] || "") || "Unknown Investor",
+          Investee_Name: cleanText(cols['Investee Name'] || cols['Investee_Name'] || "") || "Unknown Investee",
           Target_Industry: sector || "Unknown Sector",
-          Investor_Industry: cleanText(cols[5]) || "Unknown Industry",
+          Investor_Industry: cleanText(cols['Investor Industry'] || cols['Investor_Industry'] || "") || "Unknown Industry",
           Deal_Value: value,
-          Summary: cleanText(cols[7]) || "No summary provided.",
-          Original_Source_URL: cols[8] || "#",
+          Summary: cleanText(cols['Summary'] || "") || "No summary provided.",
+          Original_Source_URL: cols['Original Source URL'] || cols['Original_Source_URL'] || "#",
           Omni_Tag: value > 100000000 ? "🔥 Hot Deal" : "",
           Sector_Tag: hotSectorKey ? `${hotSectors[hotSectorKey]} ${hotSectorKey}` : ""
         };
@@ -92,7 +97,6 @@
 
       const uniqueDealTypes = [...new Set(deals.map(d => d.Deal_Type).filter(Boolean))];
 
-      // Omni Insights
       const totalDeals = filteredDeals.length;
       const totalValue = filteredDeals.reduce((sum, d) => sum + (d.Deal_Value || 0), 0);
       const investorCount = {};
@@ -107,7 +111,6 @@
       return React.createElement("div", null,
         React.createElement("h1", { className: "text-3xl font-bold mb-6" }, "DealPulse - Live Deals"),
 
-        // Omni Insights
         React.createElement("div", { className: "bg-white p-4 mb-6 rounded shadow" },
           React.createElement("h2", { className: "text-xl font-semibold mb-2" }, "Omni Insights"),
           React.createElement("p", null, `📌 Total Deals: ${totalDeals}`),
@@ -116,7 +119,6 @@
           React.createElement("p", null, `📊 Top Sector: ${topSector}`)
         ),
 
-        // Filters & Sorting
         React.createElement("div", { className: "flex flex-wrap gap-4 mb-6 items-center" },
           React.createElement("select", {
             className: "p-2 border rounded",
@@ -145,7 +147,6 @@
           }, "Reset")
         ),
 
-        // Deal cards
         sortedDeals.length === 0 ?
           React.createElement("p", { className: "text-gray-600" }, "No matching deals found.") :
           sortedDeals.map((deal, index) =>
