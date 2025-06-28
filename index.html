@@ -13,9 +13,7 @@
 </head>
 <body class="bg-gray-50 text-gray-900 min-h-screen">
   <div id="root" class="p-4"></div>
-<script>
-  console.log("Test log: Script running");
-</script>
+
   <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
@@ -40,24 +38,17 @@
 
       const parsed = Papa.parse(csvText, { header: true, skipEmptyLines: true });
 
-      // DEBUG: Log CSV headers to console
-      console.log("CSV Headers detected:", parsed.meta.fields);
-
-      const data = parsed.data.map(row => {
-        const trimmedRow = {};
+      return parsed.data.map(row => {
+        const cols = {};
         for (const key in row) {
-          trimmedRow[key.trim()] = row[key];
+          cols[key.trim()] = row[key];
         }
-        return trimmedRow;
-      });
-
-      return data.map(cols => {
-        // DEBUG: Log each row keys and example values
-        console.log("Row keys:", Object.keys(cols));
-        console.log("Row example values:", cols);
 
         const headlineRaw = cols['Headline'] || "";
-        const headline = headlineRaw.replace(/RSS Entry.*/gi, '').trim();
+        const headline = headlineRaw.replace(/RSS Entry.*/gi, '').replace(/Publication Date/gi, '').trim();
+
+        let summary = (cols['Summary'] || "").replace(/RSS Entry.*/gi, '').replace(/Publication Date/gi, '').replace(headlineRaw, '').trim();
+        if (summary === "") summary = "N/A";
 
         let rawValue = cols['Deal Value'] || "";
         rawValue = rawValue.replace(/[^0-9.]/g, '');
@@ -76,7 +67,7 @@
           Target_Industry: sector || "N/A",
           Investor_Industry: cols['Investor Industry'] || "N/A",
           Deal_Value: value,
-          Summary: (cols['Summary'] || "").replace(headlineRaw, "").replace(/RSS Entry.*/gi, '').trim() || "N/A",
+          Summary: summary,
           URL: cols['Source URL'] || "#",
           Omni_Tag: value > 100000000 ? "🔥 Hot Deal" : "",
           Sector_Tag: hotSectorKey ? `${hotSectors[hotSectorKey]} ${hotSectorKey}` : ""
@@ -103,7 +94,6 @@
 
       const uniqueDealTypes = [...new Set(deals.map(d => d.Deal_Type).filter(Boolean))];
 
-      // Omni Insights
       const totalDeals = filteredDeals.length;
       const totalValue = filteredDeals.reduce((sum, d) => sum + (d.Deal_Value || 0), 0);
 
