@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>DealPulse - Live Money Flow Tracker</title>
+  <title>DealPulse Debug</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet" />
   <style>
@@ -21,7 +21,9 @@
   <script type="text/javascript">
     const csvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vS2ULVOVELwlyYCClrgJMaG1P15JUsCjSyG8vTYLXmuh0uO-gGbRZV9c-Ntlch0XZ3bsAeXtEAa6nND/pub?output=csv";
 
-    const cleanText = (text) => text ? text.replace(/RSS Entry Title/gi, '').trim() : "";
+    const cleanText = (text) => {
+      return text ? text.replace(/RSS Entry.*/gi, '').trim() : "";
+    };
 
     async function fetchDealsFromCSV() {
       const response = await fetch(csvUrl);
@@ -53,8 +55,10 @@
 
     const App = ({ initialDeals }) => {
       return React.createElement("div", null,
-        React.createElement("h1", { className: "text-3xl font-bold mb-6" }, "DealPulse - Live Deals"),
-        React.createElement("p", { className: "mb-4" }, `Total deals loaded: ${initialDeals.length}`),
+        React.createElement("h1", { className: "text-3xl font-bold mb-6" }, "DealPulse Debug"),
+
+        React.createElement("p", { className: "mb-4" }, `Total raw rows loaded: ${initialDeals.length}`),
+
         initialDeals.map((deal, index) =>
           React.createElement("div", { key: index, className: "mb-4 p-4 bg-white rounded-lg shadow" },
             React.createElement("p", null, `Date: ${deal.Date}`),
