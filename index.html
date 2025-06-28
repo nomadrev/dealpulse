@@ -59,12 +59,12 @@
 
       return data.map(cols => {
         const headline = cleanText(cols['Headline']);
-        // Parse deal value as float (strip currency symbols etc)
-        let rawValue = cols['Deal Value'] ? cols['Deal Value'].replace(/[^0-9\.]/g, '') : "";
+        // Robust parse Deal Value: remove all but digits and dot
+        let rawValue = cols['Deal Value'] || "";
+        rawValue = rawValue.replace(/[^0-9.]/g, '');
         let value = parseFloat(rawValue);
         if (isNaN(value)) value = 0;
 
-        // Detect hot sector tag
         const sector = cols['Target Industry'] || "";
         const hotSectorKey = Object.keys(hotSectors).find(k => sector.toLowerCase().includes(k.toLowerCase()));
 
@@ -91,7 +91,6 @@
       const [investorFilter, setInvestorFilter] = React.useState("");
       const [sortOrder, setSortOrder] = React.useState("desc");
 
-      // Filter deals by deal type and investor name
       const filteredDeals = deals.filter(deal => {
         return (
           (dealTypeFilter === "" || deal.Deal_Type === dealTypeFilter) &&
@@ -99,23 +98,25 @@
         );
       });
 
-      // Sort deals by deal value asc or desc
       const sortedDeals = [...filteredDeals].sort((a, b) => {
         return sortOrder === "asc" ? a.Deal_Value - b.Deal_Value : b.Deal_Value - a.Deal_Value;
       });
 
-      // Extract unique deal types for dropdown filter
       const uniqueDealTypes = [...new Set(deals.map(d => d.Deal_Type).filter(Boolean))];
 
-      // Omni Insights calculations
+      // Omni Insights
       const totalDeals = filteredDeals.length;
       const totalValue = filteredDeals.reduce((sum, d) => sum + (d.Deal_Value || 0), 0);
 
       const investorCount = {};
       const sectorCount = {};
       filteredDeals.forEach(d => {
-        investorCount[d.Investor_Name] = (investorCount[d.Investor_Name] || 0) + 1;
-        sectorCount[d.Target_Industry] = (sectorCount[d.Target_Industry] || 0) + 1;
+        if (d.Investor_Name && d.Investor_Name !== "N/A") {
+          investorCount[d.Investor_Name] = (investorCount[d.Investor_Name] || 0) + 1;
+        }
+        if (d.Target_Industry && d.Target_Industry !== "N/A") {
+          sectorCount[d.Target_Industry] = (sectorCount[d.Target_Industry] || 0) + 1;
+        }
       });
 
       const topInvestors = Object.entries(investorCount)
