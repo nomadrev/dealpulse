@@ -25,8 +25,9 @@
 
     const cleanSummary = (summary, headline) => {
       let cleaned = cleanText(summary);
-      if (headline && cleaned.includes(headline)) {
-        cleaned = cleaned.replace(headline, '').trim();
+      if (headline) {
+        const escaped = headline.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+        cleaned = cleaned.replace(new RegExp(escaped + '$'), '').trim();
       }
       return cleaned;
     };
