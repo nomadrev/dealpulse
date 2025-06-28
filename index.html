@@ -2,9 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>DealPulse - Live Money Flow Tracker</title>
-  <meta name="description" content="DealPulse: Track live money flow and deals across sectors." />
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet" />
   <style>
@@ -33,21 +32,19 @@
       "Biotech": "💊"
     };
 
-    const cleanText = (text) => text ? text.replace(/RSS Entry Title/gi, '').trim() : text;
+    const cleanText = (text) => text ? text.replace(/RSS Entry Title/gi, '').trim() : "";
 
     async function fetchDealsFromCSV() {
       const response = await fetch(csvUrl);
       const csvText = await response.text();
 
-      // Use PapaParse to parse CSV properly
       const parsed = Papa.parse(csvText, { header: true, skipEmptyLines: true });
       const data = parsed.data;
 
       return data.map(cols => {
-        // Exclude rows that have 'RSS Entry Title' anywhere
         if (Object.values(cols).some(val => val && val.toLowerCase().includes('rss entry title'))) return null;
 
-        let rawValue = cols['Deal Value'] || cols['Deal_Value'] || "";
+        let rawValue = cols['Deal Value'] || "";
         rawValue = rawValue.trim();
         let multiplier = 1;
         if (rawValue.includes('B')) multiplier = 1e9;
@@ -56,22 +53,22 @@
         let value = parseFloat(rawValue) * multiplier;
         if (isNaN(value)) value = 0;
 
-        const sector = cleanText(cols['Target Industry'] || cols['Target_Industry'] || "");
+        const sector = cleanText(cols['Target Industry'] || "");
 
         const hotSectorKey = Object.keys(hotSectors).find(k =>
-          sector?.toLowerCase().includes(k.toLowerCase())
+          sector.toLowerCase().includes(k.toLowerCase())
         );
 
         return {
-          Date: cleanText(cols['Date'] || "") || "Unknown Date",
-          Deal_Type: cleanText(cols['Deal Type'] || cols['Deal_Type'] || "") || "Unknown Type",
-          Investor_Name: cleanText(cols['Investor Name'] || cols['Investor_Name'] || "") || "Unknown Investor",
-          Investee_Name: cleanText(cols['Investee Name'] || cols['Investee_Name'] || "") || "Unknown Investee",
+          Date: cleanText(cols['Published On']) || "Unknown Date",
+          Deal_Type: cleanText(cols['Deal Type']) || "Unknown Type",
+          Investor_Name: cleanText(cols['Investor Name']) || "Unknown Investor",
+          Investee_Name: cleanText(cols['Investee Name']) || "Unknown Investee",
           Target_Industry: sector || "Unknown Sector",
-          Investor_Industry: cleanText(cols['Investor Industry'] || cols['Investor_Industry'] || "") || "Unknown Industry",
+          Investor_Industry: cleanText(cols['Investor Industry']) || "Unknown Industry",
           Deal_Value: value,
-          Summary: cleanText(cols['Summary'] || "") || "No summary provided.",
-          Original_Source_URL: cols['Original Source URL'] || cols['Original_Source_URL'] || "#",
+          Summary: cleanText(cols['Summary']) || "No summary provided.",
+          Original_Source_URL: cols['Source URL'] || "#",
           Omni_Tag: value > 100000000 ? "🔥 Hot Deal" : "",
           Sector_Tag: hotSectorKey ? `${hotSectors[hotSectorKey]} ${hotSectorKey}` : ""
         };
