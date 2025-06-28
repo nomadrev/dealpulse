@@ -32,10 +32,13 @@
       "Biotech": "💊"
     };
 
+    // Clean text function to remove unwanted "RSS Entry Title"
+    const cleanText = (text) => text ? text.replace(/RSS Entry Title/gi, '').trim() : text;
+
     async function fetchDealsFromCSV() {
       const response = await fetch(csvUrl);
       const csvText = await response.text();
-      const rows = csvText.split('\n').slice(1).filter(r => r.trim() !== "" && !r.includes('RSS entry title'));
+      const rows = csvText.split('\n').slice(1).filter(r => r.trim() !== "" && !r.toLowerCase().includes('rss entry title'));
 
       return rows.map(row => {
         const cols = row.split(',');
@@ -49,20 +52,20 @@
         let value = parseFloat(rawValue) * multiplier;
         if (isNaN(value)) value = 0;
 
-        const sector = cols[4];
+        const sector = cleanText(cols[4]);
         const hotSectorKey = Object.keys(hotSectors).find(k =>
           sector?.toLowerCase().includes(k.toLowerCase())
         );
 
         return {
-          Date: cols[0] || "Unknown Date",
-          Deal_Type: cols[1] || "Unknown Type",
-          Investor_Name: cols[2] || "Unknown Investor",
-          Investee_Name: cols[3] || "Unknown Investee",
+          Date: cleanText(cols[0]) || "Unknown Date",
+          Deal_Type: cleanText(cols[1]) || "Unknown Type",
+          Investor_Name: cleanText(cols[2]) || "Unknown Investor",
+          Investee_Name: cleanText(cols[3]) || "Unknown Investee",
           Target_Industry: sector || "Unknown Sector",
-          Investor_Industry: cols[5] || "Unknown Industry",
+          Investor_Industry: cleanText(cols[5]) || "Unknown Industry",
           Deal_Value: value,
-          Summary: cols[7] || "No summary provided.",
+          Summary: cleanText(cols[7]) || "No summary provided.",
           Original_Source_URL: cols[8] || "#",
           Omni_Tag: value > 100000000 ? "🔥 Hot Deal" : "",
           Sector_Tag: hotSectorKey ? `${hotSectors[hotSectorKey]} ${hotSectorKey}` : ""
@@ -89,6 +92,7 @@
 
       const uniqueDealTypes = [...new Set(deals.map(d => d.Deal_Type).filter(Boolean))];
 
+      // Omni Insights
       const totalDeals = filteredDeals.length;
       const totalValue = filteredDeals.reduce((sum, d) => sum + (d.Deal_Value || 0), 0);
       const investorCount = {};
@@ -103,6 +107,7 @@
       return React.createElement("div", null,
         React.createElement("h1", { className: "text-3xl font-bold mb-6" }, "DealPulse - Live Deals"),
 
+        // Omni Insights
         React.createElement("div", { className: "bg-white p-4 mb-6 rounded shadow" },
           React.createElement("h2", { className: "text-xl font-semibold mb-2" }, "Omni Insights"),
           React.createElement("p", null, `📌 Total Deals: ${totalDeals}`),
@@ -111,6 +116,7 @@
           React.createElement("p", null, `📊 Top Sector: ${topSector}`)
         ),
 
+        // Filters & Sorting
         React.createElement("div", { className: "flex flex-wrap gap-4 mb-6 items-center" },
           React.createElement("select", {
             className: "p-2 border rounded",
@@ -139,5 +145,34 @@
           }, "Reset")
         ),
 
+        // Deal cards
         sortedDeals.length === 0 ?
-          React.createElement("p", { className: "text-gray-600" }, "No matching deals found."
+          React.createElement("p", { className: "text-gray-600" }, "No matching deals found.") :
+          sortedDeals.map((deal, index) =>
+            React.createElement("div", { key: index, className: "mb-4 p-4 bg-white rounded-lg shadow" },
+              React.createElement("div", { className: "flex justify-between items-center mb-1" },
+                React.createElement("span", { className: "text-sm text-gray-500" }, `${deal.Date} — ${deal.Deal_Type}`),
+                deal.Omni_Tag && React.createElement("span", { className: "text-sm font-semibold text-red-500" }, deal.Omni_Tag)
+              ),
+              React.createElement("h2", { className: "text-lg font-semibold" }, `${deal.Investor_Name} ➞ ${deal.Investee_Name}`),
+              deal.Sector_Tag && React.createElement("p", { className: "text-sm text-green-600 mb-1" }, `Sector: ${deal.Sector_Tag}`),
+              React.createElement("p", { className: "text-sm text-gray-700 my-2" }, `💰 $${(deal.Deal_Value/1e6).toFixed(1)}M`),
+              React.createElement("p", { className: "text-sm text-gray-700 my-2" }, deal.Summary),
+              React.createElement("a", {
+                href: deal.Original_Source_URL,
+                className: "text-blue-500 text-sm",
+                target: "_blank"
+              }, "View Source")
+            )
+          )
+      );
+    };
+
+    fetchDealsFromCSV().then(deals => {
+      ReactDOM.createRoot(document.getElementById('root')).render(
+        React.createElement(App, { initialDeals: deals })
+      );
+    });
+  </script>
+</body>
+</html>
