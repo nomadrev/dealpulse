@@ -39,7 +39,15 @@
       const csvText = await response.text();
 
       const parsed = Papa.parse(csvText, { header: true, skipEmptyLines: true });
-      const data = parsed.data;
+
+      // ✅ Trim header keys
+      const data = parsed.data.map(row => {
+        const trimmedRow = {};
+        for (const key in row) {
+          trimmedRow[key.trim()] = row[key];
+        }
+        return trimmedRow;
+      });
 
       return data.map(cols => {
         if (Object.values(cols).some(val => val && val.toLowerCase().includes('rss entry title'))) return null;
