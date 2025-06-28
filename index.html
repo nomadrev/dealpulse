@@ -35,7 +35,7 @@
     async function fetchDealsFromCSV() {
       const response = await fetch(csvUrl);
       const csvText = await response.text();
-      const rows = csvText.split('\n').slice(1).filter(r => r.trim() !== "");
+      const rows = csvText.split('\n').slice(1).filter(r => r.trim() !== "" && !r.includes('RSS entry title'));
 
       return rows.map(row => {
         const cols = row.split(',');
@@ -140,31 +140,4 @@
         ),
 
         sortedDeals.length === 0 ?
-          React.createElement("p", { className: "text-gray-600" }, "No matching deals found.") :
-          sortedDeals.map((deal, index) =>
-            React.createElement("div", { key: index, className: "mb-4 p-4 bg-white rounded-lg shadow" },
-              React.createElement("div", { className: "flex justify-between items-center mb-1" },
-                React.createElement("span", { className: "text-sm text-gray-500" }, `${deal.Date} — ${deal.Deal_Type}`),
-                deal.Omni_Tag && React.createElement("span", { className: "text-sm font-semibold text-red-500" }, deal.Omni_Tag)
-              ),
-              React.createElement("h2", { className: "text-lg font-semibold" }, `${deal.Investor_Name} ➞ ${deal.Investee_Name}`),
-              deal.Sector_Tag && React.createElement("p", { className: "text-sm text-green-600 mb-1" }, `Sector: ${deal.Sector_Tag}`),
-              React.createElement("p", { className: "text-sm text-gray-700 my-2" }, deal.Summary),
-              React.createElement("a", {
-                href: deal.Original_Source_URL,
-                className: "text-blue-500 text-sm",
-                target: "_blank"
-              }, "View Source")
-            )
-          )
-      );
-    };
-
-    fetchDealsFromCSV().then(deals => {
-      ReactDOM.createRoot(document.getElementById('root')).render(
-        React.createElement(App, { initialDeals: deals })
-      );
-    });
-  </script>
-</body>
-</html>
+          React.createElement("p", { className: "text-gray-600" }, "No matching deals found."
