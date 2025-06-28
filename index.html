@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>DealPulse Debug</title>
+  <title>DealPulse - Live Money Flow Tracker</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet" />
   <style>
@@ -21,13 +21,14 @@
   <script type="text/javascript">
     const csvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vS2ULVOVELwlyYCClrgJMaG1P15JUsCjSyG8vTYLXmuh0uO-gGbRZV9c-Ntlch0XZ3bsAeXtEAa6nND/pub?output=csv";
 
+    const cleanText = (text) => text ? text.replace(/RSS Entry Title/gi, '').trim() : "";
+
     async function fetchDealsFromCSV() {
       const response = await fetch(csvUrl);
       const csvText = await response.text();
 
       const parsed = Papa.parse(csvText, { header: true, skipEmptyLines: true });
 
-      // Trim all keys for each row
       const data = parsed.data.map(row => {
         const trimmedRow = {};
         for (const key in row) {
@@ -36,45 +37,38 @@
         return trimmedRow;
       });
 
-      console.log("RAW CSV ROWS:", data); // 🔍 See rows in browser console
-
-      // Return each row as a simple object with a fallback message for each field
       return data.map(cols => ({
         Date: cols['Published On'] || "N/A",
-        Headline: cols['Headline'] || "N/A",
+        Headline: cleanText(cols['Headline']) || "N/A",
         Deal_Type: cols['Deal Type'] || "N/A",
         Investor_Name: cols['Investor Name'] || "N/A",
         Investee_Name: cols['Investee Name'] || "N/A",
         Target_Industry: cols['Target Industry'] || "N/A",
         Investor_Industry: cols['Investor Industry'] || "N/A",
         Deal_Value: cols['Deal Value'] || "N/A",
-        Summary: cols['Summary'] || "N/A",
+        Summary: cleanText(cols['Summary']) || "N/A",
         URL: cols['Source URL'] || "#"
       }));
     }
 
     const App = ({ initialDeals }) => {
       return React.createElement("div", null,
-        React.createElement("h1", { className: "text-3xl font-bold mb-6" }, "DealPulse Debug"),
-
-        React.createElement("p", { className: "mb-4" }, `Total raw rows loaded: ${initialDeals.length}`),
-
-        initialDeals.length === 0 ?
-          React.createElement("p", { className: "text-red-600" }, "⚠️ No deals found!") :
-          initialDeals.map((deal, index) =>
-            React.createElement("div", { key: index, className: "mb-4 p-4 bg-white rounded-lg shadow" },
-              React.createElement("p", null, `Date: ${deal.Date}`),
-              React.createElement("p", null, `Headline: ${deal.Headline}`),
-              React.createElement("p", null, `Deal Type: ${deal.Deal_Type}`),
-              React.createElement("p", null, `Investor: ${deal.Investor_Name}`),
-              React.createElement("p", null, `Investee: ${deal.Investee_Name}`),
-              React.createElement("p", null, `Target Industry: ${deal.Target_Industry}`),
-              React.createElement("p", null, `Investor Industry: ${deal.Investor_Industry}`),
-              React.createElement("p", null, `Deal Value: ${deal.Deal_Value}`),
-              React.createElement("p", null, `Summary: ${deal.Summary}`),
-              React.createElement("a", { href: deal.URL, className: "text-blue-500", target: "_blank" }, "Source Link")
-            )
+        React.createElement("h1", { className: "text-3xl font-bold mb-6" }, "DealPulse - Live Deals"),
+        React.createElement("p", { className: "mb-4" }, `Total deals loaded: ${initialDeals.length}`),
+        initialDeals.map((deal, index) =>
+          React.createElement("div", { key: index, className: "mb-4 p-4 bg-white rounded-lg shadow" },
+            React.createElement("p", null, `Date: ${deal.Date}`),
+            React.createElement("p", null, `Headline: ${deal.Headline}`),
+            React.createElement("p", null, `Deal Type: ${deal.Deal_Type}`),
+            React.createElement("p", null, `Investor: ${deal.Investor_Name}`),
+            React.createElement("p", null, `Investee: ${deal.Investee_Name}`),
+            React.createElement("p", null, `Target Industry: ${deal.Target_Industry}`),
+            React.createElement("p", null, `Investor Industry: ${deal.Investor_Industry}`),
+            React.createElement("p", null, `Deal Value: ${deal.Deal_Value}`),
+            React.createElement("p", null, `Summary: ${deal.Summary}`),
+            React.createElement("a", { href: deal.URL, className: "text-blue-500", target: "_blank" }, "Source Link")
           )
+        )
       );
     };
 
