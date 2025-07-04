@@ -38,7 +38,7 @@
 
       const parsed = Papa.parse(csvText, { header: true, skipEmptyLines: true });
 
-      return parsed.data.map(row => {
+      const mappedDeals = parsed.data.map(row => {
         const cols = {};
         for (const key in row) {
           cols[key.trim()] = row[key];
@@ -56,7 +56,9 @@
         if (isNaN(value)) value = 0;
 
         const sector = cols['Target Industry'] || "";
-        const hotSectorKey = Object.keys(hotSectors).find(k => sector.toLowerCase().includes(k.toLowerCase()));
+        const hotSectorKey = Object.keys(hotSectors).find(k =>
+          sector.toLowerCase().includes(k.toLowerCase())
+        );
 
         return {
           Date: cols['Published On'] || "N/A",
@@ -73,6 +75,18 @@
           Sector_Tag: hotSectorKey ? `${hotSectors[hotSectorKey]} ${hotSectorKey}` : ""
         };
       });
+
+      // Filter out invalid deals
+      const validDeals = mappedDeals.filter(d =>
+        d.Investor_Name !== "N/A" &&
+        d.Investee_Name !== "N/A" &&
+        d.Deal_Value > 0
+      );
+
+      console.log(`Total parsed rows: ${mappedDeals.length}`);
+      console.log(`Valid deals after filter: ${validDeals.length}`);
+
+      return validDeals;
     }
 
     const App = ({ initialDeals }) => {
