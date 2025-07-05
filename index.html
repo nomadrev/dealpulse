@@ -24,53 +24,57 @@
   <div id="deals"></div>
 
   <script>
-    // Dummy data simulating your cleaned Google Sheet
-    const deals = [
-      {
-        date: "Fri, 27 Jun 2025 17:39:19 +0000",
-        investor: "Bank A",
-        investee: "Corp B",
-        value: 2000, // in millions
-        sector: "Manufacturing",
-        description: "This is a big deal with $2B funding.",
-        hot: true
-      },
-      {
-        date: "Fri, 27 Jun 2025 11:00:39 +0000",
-        investor: "Bank A",
-        investee: "Corp B",
-        value: 260, // in millions
-        sector: "Manufacturing",
-        description: "Another big round in manufacturing sector.",
-        hot: false
-      }
-    ];
+    // Use your actual CSV export URL
+    const csvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vS2ULVOVELwlyYCClrgJMaG1P15JUsCjSyG8vTYLXmuh0uO-gGbRZV9c-Ntlch0XZ3bsAeXtEAa6nND/pub?output=csv";
 
-    // Calculate insights
-    const totalDeals = deals.length;
-    const totalValue = deals.reduce((sum, d) => sum + (d.value || 0), 0);
-    const topInvestor = deals[0].investor;
-    const topSector = deals[0].sector;
+    fetch(csvUrl)
+      .then(response => response.text())
+      .then(csvText => {
+        const rows = csvText.split('\n').map(r => r.split(','));
+        const headers = rows.shift();
+        const data = rows.map(row => {
+          const obj = {};
+          row.forEach((val, idx) => {
+            obj[headers[idx]] = val;
+          });
+          return obj;
+        });
 
-    document.getElementById("total-deals").textContent = totalDeals;
-    document.getElementById("total-value").textContent = totalValue.toFixed(1);
-    document.getElementById("top-investor").textContent = topInvestor;
-    document.getElementById("top-sector").textContent = topSector;
+        const deals = data.filter(d => d["Investor Name"] && d["Investee Name"] && d["Deal Value"])
+                          .map(d => ({
+                            date: d["Date"] || "",
+                            investor: d["Investor Name"],
+                            investee: d["Investee Name"],
+                            value: parseFloat(d["Deal Value"].replace(/[^0-9\.]/g, '')),
+                            sector: d["Sector"] || "",
+                            description: d["Description"] || "",
+                            hot: d["Hot Deal"] === "TRUE"
+                          }));
 
-    // Render deal cards
-    const dealsContainer = document.getElementById("deals");
-    deals.forEach(deal => {
-      const card = document.createElement("div");
-      card.className = "card";
-      card.innerHTML = `
-        <p>${deal.date}</p>
-        <h3>${deal.investor} → ${deal.investee}</h3>
-        <p>💵 Deal Value: $${deal.value}M</p>
-        <p>${deal.description}</p>
-        ${deal.hot ? '<p class="hot">🔥 Hot Deal</p>' : ''}
-      `;
-      dealsContainer.appendChild(card);
-    });
+        const totalDeals = deals.length;
+        const totalValue = deals.reduce((sum, d) => sum + (d.value || 0), 0);
+        const topInvestor = deals[0]?.investor || "N/A";
+        const topSector = deals[0]?.sector || "N/A";
+
+        document.getElementById("total-deals").textContent = totalDeals;
+        document.getElementById("total-value").textContent = totalValue.toFixed(1);
+        document.getElementById("top-investor").textContent = topInvestor;
+        document.getElementById("top-sector").textContent = topSector;
+
+        const dealsContainer = document.getElementById("deals");
+        deals.forEach(deal => {
+          const card = document.createElement("div");
+          card.className = "card";
+          card.innerHTML = `
+            <p>${deal.date}</p>
+            <h3>${deal.investor} → ${deal.investee}</h3>
+            <p>💵 Deal Value: $${deal.value}M</p>
+            <p>${deal.description}</p>
+            ${deal.hot ? '<p class="hot">🔥 Hot Deal</p>' : ''}
+          `;
+          dealsContainer.appendChild(card);
+        });
+      });
   </script>
 </body>
 </html>
