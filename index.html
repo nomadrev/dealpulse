@@ -29,7 +29,7 @@
       const headers = rows[0];
       return rows.slice(1).filter(row =>
         row.length >= 7 &&
-        row[5] && row[6] &&
+        row[5]?.trim() && row[6]?.trim() &&
         row[5] !== 'Investor Name' && row[6] !== 'Investee Name'
       ).map(row => {
         const obj = {};
@@ -46,20 +46,20 @@
       const sectors = {};
 
       deals.forEach(deal => {
-        const valueText = deal['Deal Value'] || '';
+        const rawValue = deal['Deal Value']?.trim() || '';
         let parsedValue = 0;
 
-        if (!isNaN(valueText)) {
-          parsedValue = parseFloat(valueText) / 1_000_000; // assume raw number in $
+        if (!isNaN(rawValue) && rawValue !== '') {
+          parsedValue = parseFloat(rawValue) / 1_000_000;
         } else {
-          const match = valueText.match(/\$?([\d,.]+)\s?(M|Million|B|Billion)?/i);
+          const match = rawValue.match(/\$?([\d,.]+)\s?(M|Million|B|Billion)?/i);
           if (match) {
             parsedValue = parseFloat(match[1].replace(/,/g, ''));
             if (/B/i.test(match[2])) parsedValue *= 1000;
           }
         }
 
-        totalValue += parsedValue;
+        if (!isNaN(parsedValue)) totalValue += parsedValue;
 
         const investor = deal['Investor Name'];
         if (investor) investors[investor] = (investors[investor] || 0) + 1;
@@ -80,12 +80,19 @@
       container.innerHTML = '';
 
       deals.forEach(deal => {
+        const investor = deal['Investor Name'] || 'Unknown Investor';
+        const investee = deal['Investee Name'] || 'Unknown Investee';
+        const dealType = deal['Deal Type'] || 'N/A';
+        const sector = deal['Target Industry'] || 'Unknown Sector';
+        const value = deal['Deal Value'] || 'Undisclosed';
+        const source = deal['Source URL'] || '#';
+
         const div = document.createElement('div');
         div.className = 'bg-white p-4 rounded-lg shadow';
         div.innerHTML = `
-          <p><strong>${deal['Investor Name']}</strong> ➞ <strong>${deal['Investee Name']}</strong></p>
-          <p class="text-sm text-gray-600">${deal['Deal Type'] || 'N/A'} • ${deal['Target Industry'] || 'Unknown Sector'} • ${deal['Deal Value'] || 'Undisclosed'}</p>
-          <a class="text-blue-600 text-sm underline" href="${deal['Source URL']}" target="_blank">View Source</a>
+          <p><strong>${investor}</strong> ➞ <strong>${investee}</strong></p>
+          <p class="text-sm text-gray-600">${dealType} • ${sector} • ${value}</p>
+          <a class="text-blue-600 text-sm underline" href="${source}" target="_blank">View Source</a>
         `;
         container.appendChild(div);
       });
