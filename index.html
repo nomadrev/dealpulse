@@ -2,76 +2,97 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>DealPulse - Live Deals</title>
+  <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; }
-    .card { border: 1px solid #ddd; border-radius: 8px; padding: 15px; margin: 10px 0; }
-    .insights { background: #f8f8f8; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
-    .hot { color: red; font-weight: bold; }
+    body {
+      font-family: 'Inter', sans-serif;
+    }
   </style>
 </head>
-<body>
-  <h1>DealPulse - Live Deals</h1>
-
-  <div class="insights">
-    <p>📌 Total Deals: <span id="total-deals"></span></p>
-    <p>💰 Total Deal Value: $<span id="total-value"></span>M</p>
-    <p>🏆 Top Investors: <span id="top-investor"></span></p>
-    <p>📊 Top Sector: <span id="top-sector"></span></p>
+<body class="bg-gray-50 text-gray-900 p-4">
+  <h1 class="text-3xl font-bold mb-4">DealPulse - Live Deals</h1>
+  <div class="bg-white p-4 rounded-lg shadow max-w-xl mb-6">
+    <p>📌 <strong>Total Deals:</strong> <span id="totalDeals">Loading...</span></p>
+    <p>💰 <strong>Total Deal Value:</strong> $<span id="totalValue">Loading...</span>M</p>
+    <p>🏆 <strong>Top Investors:</strong> <span id="topInvestors">Loading...</span></p>
+    <p>📊 <strong>Top Sector:</strong> <span id="topSector">Loading...</span></p>
   </div>
-
-  <div id="deals"></div>
+  <div id="dealsContainer" class="space-y-4"></div>
 
   <script>
     const csvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vS2ULVOVELwlyYCClrgJMaG1P15JUsCjSyG8vTYLXmuh0uO-gGbRZV9c-Ntlch0XZ3bsAeXtEAa6nND/pub?output=csv";
 
+    function parseCSV(text) {
+      const rows = text.trim().split('\n').map(row => row.split(','));
+      const headers = rows[0];
+      return rows.slice(1).filter(row =>
+        row.length >= 7 &&
+        row[5] && row[6] && row[5] !== 'Investor Name' && row[6] !== 'Investee Name'
+      ).map(row => {
+        const obj = {};
+        headers.forEach((header, i) => obj[header.trim()] = row[i]?.trim());
+        return obj;
+      });
+    }
+
+    function summarizeDeals(deals) {
+      document.getElementById('totalDeals').textContent = deals.length;
+
+      let totalValue = 0;
+      const investors = {};
+      const sectors = {};
+
+      deals.forEach(deal => {
+        const valueText = deal['Deal Value'] || '';
+        const match = valueText.match(/\$?([\d,.]+)\s?(M|Million|B|Billion)?/i);
+        if (match) {
+          let num = parseFloat(match[1].replace(/,/g, ''));
+          if (/B/i.test(match[2])) num *= 1000;
+          totalValue += num;
+        }
+
+        const investor = deal['Investor Name'];
+        if (investor) investors[investor] = (investors[investor] || 0) + 1;
+
+        const sector = deal['Target Industry'];
+        if (sector) sectors[sector] = (sectors[sector] || 0) + 1;
+      });
+
+      document.getElementById('totalValue').textContent = totalValue.toFixed(1);
+      document.getElementById('topInvestors').textContent = Object.entries(investors)
+        .sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A';
+      document.getElementById('topSector').textContent = Object.entries(sectors)
+        .sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A';
+    }
+
+    function renderDeals(deals) {
+      const container = document.getElementById('dealsContainer');
+      container.innerHTML = '';
+
+      deals.forEach(deal => {
+        const div = document.createElement('div');
+        div.className = 'bg-white p-4 rounded-lg shadow';
+        div.innerHTML = `
+          <p><strong>${deal['Investor Name']}</strong> ➞ <strong>${deal['Investee Name']}</strong></p>
+          <p class="text-sm text-gray-600">${deal['Deal Type'] || 'N/A'} • ${deal['Target Industry'] || 'Unknown Sector'} • ${deal['Deal Value'] || 'Undisclosed'}</p>
+          <a class="text-blue-600 text-sm underline" href="${deal['Source URL']}" target="_blank">View Source</a>
+        `;
+        container.appendChild(div);
+      });
+    }
+
     fetch(csvUrl)
       .then(response => response.text())
-      .then(csvText => {
-        const rows = csvText.trim().split('\n').map(r => r.split(','));
-        const headers = rows.shift().map(h => h.trim().replace(/\r/, ''));
-        const data = rows.map(row => {
-          const obj = {};
-          row.forEach((val, idx) => {
-            obj[headers[idx]] = val.trim();
-          });
-          return obj;
-        }).filter(d => d["Investor Name"] && d["Investee Name"] && d["Deal Value"]);
-
-        const deals = data.map(d => ({
-          date: d["Date"] || "",
-          investor: d["Investor Name"],
-          investee: d["Investee Name"],
-          value: parseFloat(d["Deal Value"].replace(/[^0-9\.]/g, '')),
-          sector: d["Sector"] || "",
-          description: d["Description"] || "",
-          hot: d["Hot Deal"].toLowerCase() === "true"
-        }));
-
-        const totalDeals = deals.length;
-        const totalValue = deals.reduce((sum, d) => sum + (d.value || 0), 0);
-        const topInvestor = deals[0]?.investor || "N/A";
-        const topSector = deals[0]?.sector || "N/A";
-
-        document.getElementById("total-deals").textContent = totalDeals;
-        document.getElementById("total-value").textContent = totalValue.toFixed(1);
-        document.getElementById("top-investor").textContent = topInvestor;
-        document.getElementById("top-sector").textContent = topSector;
-
-        const dealsContainer = document.getElementById("deals");
-        deals.forEach(deal => {
-          const card = document.createElement("div");
-          card.className = "card";
-          card.innerHTML = `
-            <p>${deal.date}</p>
-            <h3>${deal.investor} → ${deal.investee}</h3>
-            <p>💵 Deal Value: $${deal.value}M</p>
-            <p>${deal.description}</p>
-            ${deal.hot ? '<p class="hot">🔥 Hot Deal</p>' : ''}
-          `;
-          dealsContainer.appendChild(card);
-        });
+      .then(text => {
+        const deals = parseCSV(text);
+        summarizeDeals(deals);
+        renderDeals(deals);
+      })
+      .catch(err => {
+        console.error("Error loading CSV:", err);
+        document.getElementById('totalDeals').textContent = 'Error';
       });
   </script>
 </body>
