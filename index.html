@@ -29,7 +29,8 @@
       const headers = rows[0];
       return rows.slice(1).filter(row =>
         row.length >= 7 &&
-        row[5] && row[6] && row[5] !== 'Investor Name' && row[6] !== 'Investee Name'
+        row[5] && row[6] &&
+        row[5] !== 'Investor Name' && row[6] !== 'Investee Name'
       ).map(row => {
         const obj = {};
         headers.forEach((header, i) => obj[header.trim()] = row[i]?.trim());
@@ -46,12 +47,19 @@
 
       deals.forEach(deal => {
         const valueText = deal['Deal Value'] || '';
-        const match = valueText.match(/\$?([\d,.]+)\s?(M|Million|B|Billion)?/i);
-        if (match) {
-          let num = parseFloat(match[1].replace(/,/g, ''));
-          if (/B/i.test(match[2])) num *= 1000;
-          totalValue += num;
+        let parsedValue = 0;
+
+        if (!isNaN(valueText)) {
+          parsedValue = parseFloat(valueText) / 1_000_000; // assume raw number in $
+        } else {
+          const match = valueText.match(/\$?([\d,.]+)\s?(M|Million|B|Billion)?/i);
+          if (match) {
+            parsedValue = parseFloat(match[1].replace(/,/g, ''));
+            if (/B/i.test(match[2])) parsedValue *= 1000;
+          }
         }
+
+        totalValue += parsedValue;
 
         const investor = deal['Investor Name'];
         if (investor) investors[investor] = (investors[investor] || 0) + 1;
