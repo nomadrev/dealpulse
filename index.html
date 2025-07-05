@@ -2,198 +2,74 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>DealPulse - Live Money Flow Tracker</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DealPulse - Live Deals</title>
   <style>
-    body { font-family: 'Inter', sans-serif; margin: 0; padding: 0; box-sizing: border-box; }
-    *, *::before, *::after { box-sizing: inherit; }
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    .card { border: 1px solid #ddd; border-radius: 8px; padding: 15px; margin: 10px 0; }
+    .insights { background: #f8f8f8; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+    .hot { color: red; font-weight: bold; }
   </style>
 </head>
-<body class="bg-gray-50 text-gray-900 min-h-screen">
-  <div id="root" class="p-4"></div>
+<body>
+  <h1>DealPulse - Live Deals</h1>
 
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <div class="insights">
+    <p>📌 Total Deals: <span id="total-deals"></span></p>
+    <p>💰 Total Deal Value: $<span id="total-value"></span>M</p>
+    <p>🏆 Top Investors: <span id="top-investor"></span></p>
+    <p>📊 Top Sector: <span id="top-sector"></span></p>
+  </div>
 
-  <script type="text/javascript">
-    const csvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vS2ULVOVELwlyYCClrgJMaG1P15JUsCjSyG8vTYLXmuh0uO-gGbRZV9c-Ntlch0XZ3bsAeXtEAa6nND/pub?output=csv";
+  <div id="deals"></div>
 
-    const hotSectors = {
-      "AI": "🧠",
-      "Artificial Intelligence": "🧠",
-      "CleanTech": "🔋",
-      "Energy": "🔋",
-      "Fintech": "💳",
-      "Finance": "💳",
-      "Healthcare": "💊",
-      "Biotech": "💊"
-    };
+  <script>
+    // Dummy data simulating your cleaned Google Sheet
+    const deals = [
+      {
+        date: "Fri, 27 Jun 2025 17:39:19 +0000",
+        investor: "Bank A",
+        investee: "Corp B",
+        value: 2000, // in millions
+        sector: "Manufacturing",
+        description: "This is a big deal with $2B funding.",
+        hot: true
+      },
+      {
+        date: "Fri, 27 Jun 2025 11:00:39 +0000",
+        investor: "Bank A",
+        investee: "Corp B",
+        value: 260, // in millions
+        sector: "Manufacturing",
+        description: "Another big round in manufacturing sector.",
+        hot: false
+      }
+    ];
 
-    async function fetchDealsFromCSV() {
-      const response = await fetch(csvUrl);
-      const csvText = await response.text();
+    // Calculate insights
+    const totalDeals = deals.length;
+    const totalValue = deals.reduce((sum, d) => sum + (d.value || 0), 0);
+    const topInvestor = deals[0].investor;
+    const topSector = deals[0].sector;
 
-      const parsed = Papa.parse(csvText, { header: true, skipEmptyLines: true });
+    document.getElementById("total-deals").textContent = totalDeals;
+    document.getElementById("total-value").textContent = totalValue.toFixed(1);
+    document.getElementById("top-investor").textContent = topInvestor;
+    document.getElementById("top-sector").textContent = topSector;
 
-      const mappedDeals = parsed.data.map(row => {
-        const cols = {};
-        for (const key in row) {
-          cols[key.trim()] = row[key];
-        }
-
-        const headlineRaw = cols['Headline'] || "";
-        const headline = headlineRaw.replace(/RSS Entry.*/gi, '').replace(/Publication Date/gi, '').trim();
-
-        let summary = (cols['Summary'] || "").replace(/RSS Entry.*/gi, '').replace(/Publication Date/gi, '').replace(headlineRaw, '').trim();
-        if (summary === "") summary = "N/A";
-
-        let rawValue = cols['Deal Value'] || "";
-        rawValue = rawValue.replace(/[^0-9.]/g, '');
-        let value = parseFloat(rawValue);
-        if (isNaN(value)) value = 0;
-
-        const sector = cols['Target Industry'] || "";
-        const hotSectorKey = Object.keys(hotSectors).find(k =>
-          sector.toLowerCase().includes(k.toLowerCase())
-        );
-
-        return {
-          Date: cols['Published On'] || "N/A",
-          Headline: headline || "N/A",
-          Deal_Type: cols['Deal Type'] || "N/A",
-          Investor_Name: cols['Investor Name'] || "N/A",
-          Investee_Name: cols['Investee Name'] || "N/A",
-          Target_Industry: sector || "N/A",
-          Investor_Industry: cols['Investor Industry'] || "N/A",
-          Deal_Value: value,
-          Summary: summary,
-          URL: cols['Source URL'] || "#",
-          Omni_Tag: value > 100000000 ? "🔥 Hot Deal" : "",
-          Sector_Tag: hotSectorKey ? `${hotSectors[hotSectorKey]} ${hotSectorKey}` : ""
-        };
-      });
-
-      // Filter out invalid deals
-      const validDeals = mappedDeals.filter(d =>
-        d.Investor_Name !== "N/A" &&
-        d.Investee_Name !== "N/A" &&
-        d.Deal_Value > 0
-      );
-
-      console.log(`Total parsed rows: ${mappedDeals.length}`);
-      console.log(`Valid deals after filter: ${validDeals.length}`);
-
-      return validDeals;
-    }
-
-    const App = ({ initialDeals }) => {
-      const [deals, setDeals] = React.useState(initialDeals);
-      const [dealTypeFilter, setDealTypeFilter] = React.useState("");
-      const [investorFilter, setInvestorFilter] = React.useState("");
-      const [sortOrder, setSortOrder] = React.useState("desc");
-
-      const filteredDeals = deals.filter(deal => {
-        return (
-          (dealTypeFilter === "" || deal.Deal_Type === dealTypeFilter) &&
-          (investorFilter === "" || deal.Investor_Name.toLowerCase().includes(investorFilter.toLowerCase()))
-        );
-      });
-
-      const sortedDeals = [...filteredDeals].sort((a, b) => {
-        return sortOrder === "asc" ? a.Deal_Value - b.Deal_Value : b.Deal_Value - a.Deal_Value;
-      });
-
-      const uniqueDealTypes = [...new Set(deals.map(d => d.Deal_Type).filter(Boolean))];
-
-      const totalDeals = filteredDeals.length;
-      const totalValue = filteredDeals.reduce((sum, d) => sum + (d.Deal_Value || 0), 0);
-
-      const investorCount = {};
-      const sectorCount = {};
-      filteredDeals.forEach(d => {
-        if (d.Investor_Name && d.Investor_Name !== "N/A") {
-          investorCount[d.Investor_Name] = (investorCount[d.Investor_Name] || 0) + 1;
-        }
-        if (d.Target_Industry && d.Target_Industry !== "N/A") {
-          sectorCount[d.Target_Industry] = (sectorCount[d.Target_Industry] || 0) + 1;
-        }
-      });
-
-      const topInvestors = Object.entries(investorCount)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 3)
-        .map(e => e[0]);
-
-      const topSector = Object.entries(sectorCount)
-        .sort((a, b) => b[1] - a[1])[0]?.[0] || "N/A";
-
-      return React.createElement("div", null,
-        React.createElement("h1", { className: "text-3xl font-bold mb-6" }, "DealPulse - Live Deals"),
-
-        React.createElement("div", { className: "bg-white p-4 mb-6 rounded shadow" },
-          React.createElement("h2", { className: "text-xl font-semibold mb-2" }, "Omni Insights"),
-          React.createElement("p", null, `📌 Total Deals: ${totalDeals}`),
-          React.createElement("p", null, `💰 Total Deal Value: $${(totalValue / 1e6).toFixed(1)}M`),
-          React.createElement("p", null, `🏆 Top Investors: ${topInvestors.join(', ') || "N/A"}`),
-          React.createElement("p", null, `📊 Top Sector: ${topSector}`)
-        ),
-
-        React.createElement("div", { className: "flex flex-wrap gap-4 mb-6 items-center" },
-          React.createElement("select", {
-            className: "p-2 border rounded",
-            value: dealTypeFilter,
-            onChange: e => setDealTypeFilter(e.target.value)
-          },
-            React.createElement("option", { value: "" }, "All Deal Types"),
-            ...uniqueDealTypes.map(type =>
-              React.createElement("option", { key: type, value: type }, type)
-            )
-          ),
-          React.createElement("input", {
-            className: "p-2 border rounded flex-1",
-            type: "text",
-            placeholder: "Search by Investor Name...",
-            value: investorFilter,
-            onChange: e => setInvestorFilter(e.target.value)
-          }),
-          React.createElement("button", {
-            className: "px-4 py-2 bg-blue-500 text-white rounded",
-            onClick: () => setSortOrder(sortOrder === "asc" ? "desc" : "asc")
-          }, sortOrder === "asc" ? "⬆️ Deal Value" : "⬇️ Deal Value"),
-          React.createElement("button", {
-            className: "px-4 py-2 bg-gray-200 rounded",
-            onClick: () => { setDealTypeFilter(""); setInvestorFilter(""); }
-          }, "Reset")
-        ),
-
-        sortedDeals.length === 0 ?
-          React.createElement("p", { className: "text-gray-600" }, "No matching deals found.") :
-          sortedDeals.map((deal, index) =>
-            React.createElement("div", { key: index, className: "mb-4 p-4 bg-white rounded-lg shadow" },
-              React.createElement("div", { className: "flex justify-between items-center mb-1" },
-                React.createElement("span", { className: "text-sm text-gray-500" }, `${deal.Date} — ${deal.Deal_Type}`),
-                deal.Omni_Tag && React.createElement("span", { className: "text-sm font-semibold text-red-500" }, deal.Omni_Tag)
-              ),
-              React.createElement("h2", { className: "text-lg font-semibold" }, `${deal.Investor_Name} ➞ ${deal.Investee_Name}`),
-              deal.Sector_Tag && React.createElement("p", { className: "text-sm text-green-600 mb-1" }, `Sector: ${deal.Sector_Tag}`),
-              React.createElement("p", { className: "text-sm text-gray-700 my-2" }, deal.Summary),
-              React.createElement("a", {
-                href: deal.URL,
-                className: "text-blue-500 text-sm",
-                target: "_blank"
-              }, "View Source")
-            )
-          )
-      );
-    };
-
-    fetchDealsFromCSV().then(deals => {
-      ReactDOM.createRoot(document.getElementById('root')).render(
-        React.createElement(App, { initialDeals: deals })
-      );
+    // Render deal cards
+    const dealsContainer = document.getElementById("deals");
+    deals.forEach(deal => {
+      const card = document.createElement("div");
+      card.className = "card";
+      card.innerHTML = `
+        <p>${deal.date}</p>
+        <h3>${deal.investor} → ${deal.investee}</h3>
+        <p>💵 Deal Value: $${deal.value}M</p>
+        <p>${deal.description}</p>
+        ${deal.hot ? '<p class="hot">🔥 Hot Deal</p>' : ''}
+      `;
+      dealsContainer.appendChild(card);
     });
   </script>
 </body>
