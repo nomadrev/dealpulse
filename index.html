@@ -24,32 +24,30 @@
   <div id="deals"></div>
 
   <script>
-    // Use your actual CSV export URL
     const csvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vS2ULVOVELwlyYCClrgJMaG1P15JUsCjSyG8vTYLXmuh0uO-gGbRZV9c-Ntlch0XZ3bsAeXtEAa6nND/pub?output=csv";
 
     fetch(csvUrl)
       .then(response => response.text())
       .then(csvText => {
-        const rows = csvText.split('\n').map(r => r.split(','));
-        const headers = rows.shift();
+        const rows = csvText.trim().split('\n').map(r => r.split(','));
+        const headers = rows.shift().map(h => h.trim().replace(/\r/, ''));
         const data = rows.map(row => {
           const obj = {};
           row.forEach((val, idx) => {
-            obj[headers[idx]] = val;
+            obj[headers[idx]] = val.trim();
           });
           return obj;
-        });
+        }).filter(d => d["Investor Name"] && d["Investee Name"] && d["Deal Value"]);
 
-        const deals = data.filter(d => d["Investor Name"] && d["Investee Name"] && d["Deal Value"])
-                          .map(d => ({
-                            date: d["Date"] || "",
-                            investor: d["Investor Name"],
-                            investee: d["Investee Name"],
-                            value: parseFloat(d["Deal Value"].replace(/[^0-9\.]/g, '')),
-                            sector: d["Sector"] || "",
-                            description: d["Description"] || "",
-                            hot: d["Hot Deal"] === "TRUE"
-                          }));
+        const deals = data.map(d => ({
+          date: d["Date"] || "",
+          investor: d["Investor Name"],
+          investee: d["Investee Name"],
+          value: parseFloat(d["Deal Value"].replace(/[^0-9\.]/g, '')),
+          sector: d["Sector"] || "",
+          description: d["Description"] || "",
+          hot: d["Hot Deal"].toLowerCase() === "true"
+        }));
 
         const totalDeals = deals.length;
         const totalValue = deals.reduce((sum, d) => sum + (d.value || 0), 0);
